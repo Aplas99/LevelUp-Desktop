@@ -139,6 +139,10 @@ window.levelUpAPI.saveData(data)
 window.levelUpAPI.getDataFilePath()
 window.levelUpAPI.minimizeWindow()
 window.levelUpAPI.closeWindow()
+window.levelUpAPI.setAlwaysOnTop(value: boolean)
+window.levelUpAPI.setOpacity(value: number)
+window.levelUpAPI.setStartWithWindows(value: boolean)
+window.levelUpAPI.quitApp()
 ```
 
 This only works inside the Electron window, not the normal browser tab at `localhost:5173`.
@@ -219,9 +223,46 @@ Task reordering within a group uses native HTML5 drag events (`draggable`, `onDr
 
 A cyan drop-indicator line appears above the target slot during drag.
 
-### 12. Drag region covers the full outer shell
+### 12. Drag region — PlayerStatusPanel is outside the scroll container
 
-The outer `<section>` wrapper in `App.tsx` has `drag-region` (`-webkit-app-region: drag`). The scrollable content area and bottom nav have `no-drag`. This allows users to drag the window from any non-interactive area — borders, padding, and the top chrome strip.
+The outer `<section>` wrapper in `App.tsx` has `drag-region`. The `PlayerStatusPanel` (read-only, no interactive elements) is rendered directly inside this section, outside the scroll container. This means the entire status card area is draggable. The scrollable quest content and bottom nav have `no-drag`. Scrollable areas must always be `no-drag` because `-webkit-app-region: drag` captures mouse events and prevents scrolling.
+
+### 13. All date comparisons use local calendar date, not UTC
+
+`toISOString()` returns a UTC date string, which can be a different calendar day than the user's local time (e.g. UTC-5 at 7 pm local is UTC midnight = next UTC day). All today/yesterday/tomorrow comparisons use a `localDateStr()` helper:
+
+```ts
+function localDateStr(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+```
+
+Timestamps (createdAt, completedAt) still use `toISOString()` since they record an exact moment, not a calendar date.
+
+### 14. Rank progression requires both level AND streak thresholds
+
+Rank is derived, not stored as an independent value. `calculateRank(level, streak)` determines rank from both conditions simultaneously. This means rank can go down if the streak drops below a threshold.
+
+```ts
+const RANK_THRESHOLDS = [
+  { rank: "S", minLevel: 50, minStreak: 60 },
+  { rank: "A", minLevel: 40, minStreak: 30 },
+  { rank: "B", minLevel: 30, minStreak: 14 },
+  { rank: "C", minLevel: 20, minStreak: 7  },
+  { rank: "D", minLevel: 10, minStreak: 3  },
+  { rank: "E", minLevel: 1,  minStreak: 0  },
+];
+```
+
+Rank is recalculated and saved after every task toggle and every streak change.
+
+### 15. Streak increments only when a full quest group is completed
+
+Streak goes up at most once per day, and only if the user completes every active task in at least one quest group. `checkAndUpdateStreak` is called inside `handleToggleTask` after verifying the toggled group is fully done. On app load, `checkAndUpdateStreak` runs once to reset the streak if days were missed.
+
+### 16. Deferred tasks use a `deferredDate` field
+
+"Move to Tomorrow" sets `deferredDate = localTomorrow` on all incomplete, active tasks in a group. Tasks are filtered at render time — any task where `deferredDate > today` is hidden. The date rolls naturally: when tomorrow becomes today, the tasks reappear. A 5 XP penalty per deferred task is applied at the time of deferral.
 
 ---
 
@@ -288,7 +329,22 @@ user: {
   xp: number;
   xpToNextLevel: number;
   streak: number;
+  lastActiveDate?: string;   // local YYYY-MM-DD, used for streak tracking
   avatarUrl?: string;
+}
+```
+
+Current task data:
+
+```ts
+task: {
+  id: string;
+  title: string;
+  completed: boolean;
+  xpReward: number;
+  createdAt: string;
+  completedAt: string | null;
+  deferredDate?: string;     // local YYYY-MM-DD, hides task until this date
 }
 ```
 
@@ -302,6 +358,9 @@ settings: {
   sessionsBeforeLongBreak: number;
   autoRepeat: boolean;
   minimizeToTray: boolean;
+  alwaysOnTop: boolean;
+  startWithWindows: boolean;
+  opacity: number;           // 70–100, applied as mainWindow.setOpacity(opacity/100)
 }
 ```
 
@@ -404,63 +463,98 @@ Implemented:
 - `LevelUpBanner` full-screen overlay on level-up: scan lines, corner accents, "YOU LEVELED UP!" — auto-dismisses after 4s.
 - Level-up triggers both a cyan in-app toast and a desktop OS notification.
 
-### Phase 6 - Background desktop behavior: partially complete
+### Phase 6 - Background desktop behavior: complete
 
 Implemented desktop-shell behavior:
 
 - Frameless Electron window.
 - Default Windows menu bar removed.
-- Slim custom top chrome with "System Online" status dot.
+- Slim custom top chrome with "System Online" status dots and always-on-top pin button.
 - Custom minimize and close buttons.
-- Full outer-shell drag region — window can be dragged from any non-interactive area.
-- Window position and size saved to JSON.
-- Window position and size restored on next launch.
+- PlayerStatusPanel lives outside the scroll container so the full status card area is draggable.
+- Window position and size saved to JSON, restored on next launch.
+- System tray support: cyan 16×16 PNG icon generated at runtime (no external assets) using `createSolidColorPNG()` with manual CRC32 + `zlib.deflateSync`.
+- Tray context menu: Show Level Up / Quit.
+- Minimize to tray: close button hides the window when `minimizeToTray` is enabled; quit is via tray.
+- Always-on-top toggle: pin button in `WindowChrome` header, wired to `mainWindow.setAlwaysOnTop()` via IPC.
+- Start with Windows: `app.setLoginItemSettings({ openAtLogin: value })` via IPC.
+- Opacity slider (70–100%): `mainWindow.setOpacity(value / 100)` via IPC.
+- System settings section in `ProfilePanel` with toggle switches and the opacity slider.
+- `isQuitting` flag distinguishes intentional quit (tray menu / `quitApp` IPC) from hide-to-tray close.
 
-Current shell behavior:
-
-- The user can drag the panel from anywhere outside interactive elements.
-- The panel reopens where the user last placed it, effectively making it pinnable.
-- All interactive controls and the scroll area are explicitly marked `no-drag`.
-
-Still planned:
-
-- System tray support
-- Minimize to tray
-- Always-on-top option
-- Start with Windows option
-- Transparent background
-- Opacity slider
+Tray icon decision: rather than ship a static PNG asset, `createSolidColorPNG()` builds a valid PNG buffer from scratch at runtime. This avoids asset bundling issues in the Electron build.
 
 ### Phase 7 - Notifications and toasts: complete
 
 In-app toast system:
 
-- `ToastContainer` renders a stack of clipped-corner toasts in the bottom-right of the window.
+- `ToastContainer` renders a stack of clipped-corner toasts centered at the top of the window.
 - Each toast has a type: `xp`, `levelup`, `streak`, `timer`.
-- Toasts slide in and fade out after 3 seconds.
+- Toasts slide down from above and fade out after 3 seconds.
 - Toast queue is managed in `App.tsx` via `addToast` / `removeToast`.
 - Task completion triggers an orange XP toast.
 - Level-up triggers a cyan levelup toast.
+- Streak increment triggers an amber streak toast; milestone days (3/7/14/30/60/100) get special labels.
+- Rank-up triggers a cyan toast.
+- Task deferral triggers an orange penalty toast.
 
 Desktop notifications:
 
 - Permission requested once on app load.
-- Level-up fires an OS notification: "Level Up! You are now Level N."
+- Level-up fires an OS notification.
+- Rank-up fires an OS notification.
 - Task completion fires a silent OS notification.
 
 ### Phase 8 - Hunter profile: complete
 
 Implemented:
 
-- `name` and `rank` fields added to `LevelUpUser`.
-- `avatarUrl?: string` added to `LevelUpUser` for a base64-encoded profile photo.
+- `name` and `rank` fields in `LevelUpUser`. `avatarUrl?: string` for base64 profile photo.
 - `ProfilePanel` component on the Profile tab:
-  - Shows avatar (photo or initial), rank hexagon, level, streak, XP bar.
-  - Name edit field (24-char max) with character counter.
+  - Avatar (photo or initial), rank hexagon, level, streak pill, XP bar.
+  - Name edit field (24-char max). "Save Changes" button appears only when dirty.
   - Photo upload via native file picker — stored as data URL in JSON.
-  - "Save Changes" button appears only when there are unsaved edits.
-- `PlayerStatusPanel` displays the avatar photo if one is set, otherwise falls back to the initial letter.
+  - System Settings section: always-on-top toggle, minimize-to-tray toggle, start-with-Windows toggle, opacity slider (70–100%). Settings apply immediately via IPC.
+- `PlayerStatusPanel` shows avatar photo or initial fallback.
 - Defaults: `name: "Hunter"`, `rank: "E"`.
+
+### Phase 9 - Rank progression: complete
+
+Implemented:
+
+- `progressService.ts` centralises all rank and streak logic.
+- `calculateRank(level, streak)` checks both level AND streak thresholds (see decision #14).
+- Rank-up detected in `App.tsx` via `useEffect` watching `data.user.rank` with `prevRankRef`.
+- `RankUpBanner` full-screen overlay on rank-up with rank-coloured styling:
+  - D: blue, C: green, B: orange, A: red-400, S: red-500 (stronger glow).
+  - Shows hexagon rank letter, "YOU ARE NOW RANK X Hunter", auto-dismisses after 4.5s.
+- Rank-up fires both an in-app toast and an OS desktop notification.
+
+### Phase 10 - Streak system: complete
+
+Implemented:
+
+- `lastActiveDate` field added to `LevelUpUser` (ISO date string, local calendar date).
+- `checkAndUpdateStreak` returns updated streak + date, or null if today is already counted.
+- Streak increments only when all active tasks in at least one quest group are completed (see decision #15).
+- On app load, `checkAndUpdateStreak` runs once via a `streakCheckedRef` guard. If days were missed, streak resets to 1.
+- Streak milestone toasts at 3, 7, 14, 30, 60, and 100 days.
+- `RANK_ORDER` and `rankIndex` exported from `progressService` for rank comparison logic.
+
+### Move to Tomorrow: complete
+
+- Right-arrow defer button hidden in each quest group header, revealed by hovering the +ADD button area.
+- Hovering the arrow shows a "Move to Tomorrow · -5 XP/task" tooltip.
+- Clicking defers all incomplete active tasks to the next local calendar day (`deferredDate`).
+- Deducted XP: 5 per deferred task, clamped at 0.
+- Deferred tasks are invisible until their date arrives. Group header shows "+N tmr" badge when tasks are deferred.
+- Empty state message changes to "All tasks deferred — N returning tomorrow" when every active task is deferred.
+
+### Dev Tools: complete
+
+- Collapsible "Dev Tools" section at the bottom of the quest board (chevron toggle).
+- Three test buttons: `+50 XP`, `+1 Streak`, `Next Rank` — each triggers the corresponding toast and banner flow for testing.
+- `Reset All Progress` button (full-width, danger red) — prompts for confirmation, then calls `createDefaultAppData()` to wipe XP, level, streak, rank, and all quest groups back to defaults.
 
 ---
 
@@ -680,57 +774,13 @@ Current status:
 - Phase 3.5: complete
 - Phase 4: complete
 - Phase 5: complete
-- Phase 6: partially complete
+- Phase 6: complete
 - Phase 7: complete
 - Phase 8: complete
-
-### Phase 6 - Background desktop behavior (remaining)
-
-Still planned:
-
-- System tray support
-- Minimize to tray
-- Always-on-top option
-- Start with Windows option
-- Transparent background
-- Full floating-pane styling
-- Opacity slider
-
-Already implemented:
-
-- Frameless window
-- Full outer-shell drag region
-- Save and restore window position
-- Custom minimize/close controls
-
-### Phase 9 - Rank progression
-
-Rank should advance automatically based on level milestones.
-
-Possible thresholds:
-
-```txt
-E  ->  Level 1-9
-D  ->  Level 10-19
-C  ->  Level 20-29
-B  ->  Level 30-39
-A  ->  Level 40-49
-S  ->  Level 50+
-```
-
-Rank-up should trigger its own banner or notification distinct from level-up.
-
-### Phase 10 - Streak system
-
-Currently `streak` is stored but never auto-incremented.
-
-Needed:
-
-- Track `lastCompletedDate` in user data.
-- On app open or task completion, check if today is a new day.
-- If yesterday had activity, increment streak.
-- If more than one day was missed, reset streak to 0.
-- Streak milestone toasts (e.g. 7 days, 30 days, 100 days).
+- Phase 9: complete
+- Phase 10: complete
+- Move to Tomorrow: complete
+- Dev Tools: complete
 
 ### Phase 11 - Database migration
 
@@ -768,13 +818,14 @@ level-up/
       LevelUpBanner.tsx
       PlayerStatusPanel.tsx
       ProfilePanel.tsx
-      QuestBoard.tsx
-      QuestGroupCard.tsx
+      QuestBoard.tsx         (includes Dev Tools panel)
+      QuestGroupCard.tsx     (includes Move to Tomorrow)
       QuestTaskItem.tsx
+      RankUpBanner.tsx
       StatsPanel.tsx
       TimerPanel.tsx
       ToastContainer.tsx
-      WindowChrome.tsx
+      WindowChrome.tsx       (includes always-on-top pin)
 
     hooks/
       useLevelUpData.ts
@@ -782,6 +833,7 @@ level-up/
 
     services/
       appDataFactory.ts
+      progressService.ts     (rank, streak, milestone logic)
       storageService.ts
       timerService.ts
 
