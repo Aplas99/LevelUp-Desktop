@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
-import type { LevelUpUser } from "../types/appData";
+import type { LevelUpSettings, LevelUpUser } from "../types/appData";
 
 interface ProfilePanelProps {
   user: LevelUpUser;
+  settings: LevelUpSettings;
   onUpdateUser: (updates: Partial<LevelUpUser>) => void;
+  onUpdateSettings: (updates: Partial<LevelUpSettings>) => void;
 }
 
 const RANKS = ["E", "D", "C", "B", "A", "S"];
@@ -26,7 +28,7 @@ function RankHexagon({ rank }: { rank: string }) {
   );
 }
 
-export function ProfilePanel({ user, onUpdateUser }: ProfilePanelProps) {
+export function ProfilePanel({ user, settings, onUpdateUser, onUpdateSettings }: ProfilePanelProps) {
   const [name, setName] = useState(user.name);
   const [previewUrl, setPreviewUrl] = useState<string | null>(user.avatarUrl ?? null);
   const [dirty, setDirty] = useState(false);
@@ -179,6 +181,104 @@ export function ProfilePanel({ user, onUpdateUser }: ProfilePanelProps) {
           Save Changes
         </button>
       )}
+
+      {/* System settings */}
+      <div className="rounded-xl border border-cyan-400/20 bg-slate-900/80 p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-400/80">
+          System Settings
+        </p>
+
+        <div className="space-y-3">
+          {/* Always on Top */}
+          <ToggleSetting
+            label="Always on Top"
+            description="Window stays above other apps"
+            checked={settings.alwaysOnTop}
+            onChange={(v) => onUpdateSettings({ alwaysOnTop: v })}
+          />
+
+          {/* Minimize to Tray */}
+          <ToggleSetting
+            label="Minimize to Tray"
+            description="Hide to system tray on close"
+            checked={settings.minimizeToTray}
+            onChange={(v) => onUpdateSettings({ minimizeToTray: v })}
+          />
+
+          {/* Start with Windows */}
+          <ToggleSetting
+            label="Start with Windows"
+            description="Launch automatically on login"
+            checked={settings.startWithWindows}
+            onChange={(v) => onUpdateSettings({ startWithWindows: v })}
+          />
+
+          {/* Opacity */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Window Opacity
+              </span>
+              <span className="text-[10px] tabular-nums text-slate-500">
+                {settings.opacity}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={70}
+              max={100}
+              step={1}
+              value={settings.opacity}
+              onChange={(e) => onUpdateSettings({ opacity: Number(e.target.value) })}
+              className="w-full accent-cyan-400"
+            />
+            <div className="mt-0.5 flex justify-between text-[9px] text-slate-700">
+              <span>70%</span>
+              <span>100%</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
+  );
+}
+
+function ToggleSetting({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300">{label}</p>
+        <p className="text-[9px] text-slate-600">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-5 w-9 shrink-0 rounded-full border transition-all duration-200 ${
+          checked
+            ? "border-cyan-400/50 bg-cyan-400/20"
+            : "border-slate-700 bg-slate-800"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-3.5 w-3.5 rounded-full shadow transition-all duration-200 ${
+            checked
+              ? "left-[calc(100%-16px)] bg-cyan-400"
+              : "left-0.5 bg-slate-600"
+          }`}
+        />
+      </button>
+    </div>
   );
 }

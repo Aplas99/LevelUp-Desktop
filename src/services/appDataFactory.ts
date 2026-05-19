@@ -17,6 +17,9 @@ export function createDefaultAppData(): AppData {
       sessionsBeforeLongBreak: 4,
       autoRepeat: false,
       minimizeToTray: true,
+      alwaysOnTop: false,
+      startWithWindows: false,
+      opacity: 100,
     },
     questGroups: [],
     timer: {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AppData } from "../types/appData";
 import type { Toast } from "./ToastContainer";
 import { createQuestGroup, createQuestTask } from "../services/appDataFactory";
+import { calculateRank, checkAndUpdateStreak, getStreakMilestone, localDateStr } from "../services/progressService";
 import { QuestGroupCard } from "./QuestGroupCard";
 
 interface QuestBoardProps {
@@ -75,25 +76,44 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
           xpToNextLevel = Math.round(xpToNextLevel * 1.25);
         }
 
-        // Toast for XP gain
-        addToast({
-          type: "xp",
-          title: "Quest Complete!",
-          body: `${taskTitle} · +${xpChange} XP`,
-        });
+        addToast({ type: "xp", title: "Quest Complete!", body: `${taskTitle} · +${xpChange} XP` });
 
-        // Desktop notification for task completion
         if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          new Notification("Quest Complete!", {
-            body: `${taskTitle} · +${xpChange} XP`,
-            silent: true,
-          });
+          new Notification("Quest Complete!", { body: `${taskTitle} · +${xpChange} XP`, silent: true });
         }
       }
 
+      // Streak: increment only when the toggled group is now fully complete
+      const today = localDateStr();
+      const toggledGroup = updatedGroups.find((g) => g.id === groupId);
+      const activeTasks = (toggledGroup?.tasks ?? []).filter(
+        (t) => !t.deferredDate || t.deferredDate <= today,
+      );
+      const groupFullyDone = activeTasks.length > 0 && activeTasks.every((t) => t.completed);
+
+      let streak = cur.user.streak;
+      let lastActiveDate = cur.user.lastActiveDate;
+
+      if (groupFullyDone && xpChange > 0) {
+        const streakUpdate = checkAndUpdateStreak(cur.user);
+        if (streakUpdate) {
+          const prevStreak = streak;
+          streak = streakUpdate.streak;
+          lastActiveDate = streakUpdate.lastActiveDate;
+          const milestone = getStreakMilestone(prevStreak, streak);
+          if (milestone) {
+            addToast({ type: "streak", title: `${milestone}-Day Streak!`, body: "Keep it up, Hunter!" });
+          } else {
+            addToast({ type: "streak", title: "Streak Continues!", body: `Day ${streak} — keep going!` });
+          }
+        }
+      }
+
+      const newRank = calculateRank(level, streak);
+
       return {
         ...cur,
-        user: { ...cur.user, xp, level, xpToNextLevel },
+        user: { ...cur.user, xp, level, xpToNextLevel, streak, lastActiveDate, rank: newRank },
         questGroups: updatedGroups,
       };
     });
@@ -143,6 +163,47 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
       ...cur,
       questGroups: cur.questGroups.filter((g) => g.id !== groupId),
     }));
+  }
+
+  function handleDeferGroupTasks(groupId: string) {
+    const today = localDateStr();
+    const tmrDate = new Date();
+    tmrDate.setDate(tmrDate.getDate() + 1);
+    const tomorrow = localDateStr(tmrDate);
+
+    updateData((cur) => {
+      const group = cur.questGroups.find((g) => g.id === groupId);
+      if (!group) return cur;
+
+      const incompleteTasks = group.tasks.filter(
+        (t) => !t.completed && (!t.deferredDate || t.deferredDate <= today),
+      );
+      if (incompleteTasks.length === 0) return cur;
+
+      const penalty = incompleteTasks.length * 5;
+      const newXp = Math.max(0, cur.user.xp - penalty);
+
+      addToast({
+        type: "xp",
+        title: "Tasks Deferred",
+        body: `${incompleteTasks.length} task(s) moved to tomorrow · -${penalty} XP`,
+      });
+
+      return {
+        ...cur,
+        user: { ...cur.user, xp: newXp },
+        questGroups: cur.questGroups.map((g) => {
+          if (g.id !== groupId) return g;
+          return {
+            ...g,
+            tasks: g.tasks.map((t) => {
+              if (t.completed || (t.deferredDate && t.deferredDate > today)) return t;
+              return { ...t, deferredDate: tomorrow };
+            }),
+          };
+        }),
+      };
+    });
   }
 
   return (
@@ -208,6 +269,7 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
               onEditTask={(taskId, newTitle) => handleEditTask(group.id, taskId, newTitle)}
               onReorderTasks={(newIds) => handleReorderTasks(group.id, newIds)}
               onDeleteGroup={() => handleDeleteGroup(group.id)}
+              onDeferTasks={() => handleDeferGroupTasks(group.id)}
             />
           ))
         )}

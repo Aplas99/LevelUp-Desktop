@@ -4,22 +4,28 @@ function WindowButton({
   label,
   onClick,
   kind = "default",
+  active = false,
   children,
 }: {
   label: string;
-  onClick: () => Promise<void>;
-  kind?: "default" | "danger";
+  onClick: () => void;
+  kind?: "default" | "danger" | "toggle";
+  active?: boolean;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
-      onClick={() => void onClick()}
+      onClick={onClick}
       className={`no-drag window-control ${
         kind === "danger"
           ? "border-red-500/30 text-red-400 hover:border-red-400 hover:bg-red-500/20"
-          : "border-slate-700/60 text-slate-500 hover:border-slate-500 hover:bg-slate-700/50"
+          : kind === "toggle"
+            ? active
+              ? "border-cyan-400/50 bg-cyan-400/15 text-cyan-300 hover:bg-cyan-400/25"
+              : "border-slate-700/60 text-slate-600 hover:border-slate-500 hover:bg-slate-700/50 hover:text-slate-400"
+            : "border-slate-700/60 text-slate-500 hover:border-slate-500 hover:bg-slate-700/50"
       }`}
     >
       {children}
@@ -27,7 +33,12 @@ function WindowButton({
   );
 }
 
-export function WindowChrome() {
+interface WindowChromeProps {
+  alwaysOnTop: boolean;
+  onToggleAlwaysOnTop: () => void;
+}
+
+export function WindowChrome({ alwaysOnTop, onToggleAlwaysOnTop }: WindowChromeProps) {
   return (
     <header className="drag-region flex items-center justify-between border-b border-cyan-400/10 bg-slate-950 px-3.5 py-2">
       <div className="pointer-events-none flex items-center gap-2">
@@ -38,9 +49,21 @@ export function WindowChrome() {
         </p>
       </div>
       <div className="no-drag flex items-center gap-1.5">
+        {/* Always-on-top pin */}
+        <WindowButton
+          label={alwaysOnTop ? "Disable always on top" : "Enable always on top"}
+          kind="toggle"
+          active={alwaysOnTop}
+          onClick={onToggleAlwaysOnTop}
+        >
+          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
+            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+          </svg>
+        </WindowButton>
+
         <WindowButton
           label="Minimize window"
-          onClick={() => window.levelUpAPI.minimizeWindow()}
+          onClick={() => void window.levelUpAPI.minimizeWindow()}
         >
           <svg
             viewBox="0 0 24 24"
@@ -56,7 +79,7 @@ export function WindowChrome() {
         <WindowButton
           label="Close window"
           kind="danger"
-          onClick={() => window.levelUpAPI.closeWindow()}
+          onClick={() => void window.levelUpAPI.closeWindow()}
         >
           <svg
             viewBox="0 0 24 24"

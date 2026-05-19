@@ -7,6 +7,7 @@ export interface LevelUpUser {
   xp: number;
   xpToNextLevel: number;
   streak: number;
+  lastActiveDate?: string;
   avatarUrl?: string;
 }
 
@@ -17,6 +18,9 @@ export interface LevelUpSettings {
   sessionsBeforeLongBreak: number;
   autoRepeat: boolean;
   minimizeToTray: boolean;
+  alwaysOnTop: boolean;
+  startWithWindows: boolean;
+  opacity: number;
 }
 
 export interface QuestTask {
@@ -26,6 +30,7 @@ export interface QuestTask {
   xpReward: number;
   createdAt: string;
   completedAt: string | null;
+  deferredDate?: string;
 }
 
 export interface QuestGroup {

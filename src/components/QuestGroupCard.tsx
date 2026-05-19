@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { QuestGroup } from "../types/appData";
+import { localDateStr } from "../services/progressService";
 import { QuestTaskItem } from "./QuestTaskItem";
 
 interface QuestGroupCardProps {
@@ -10,6 +11,7 @@ interface QuestGroupCardProps {
   onEditTask: (taskId: string, newTitle: string) => void;
   onReorderTasks: (newIds: string[]) => void;
   onDeleteGroup: () => void;
+  onDeferTasks: () => void;
 }
 
 const INPUT_CLIP =
@@ -23,6 +25,7 @@ export function QuestGroupCard({
   onEditTask,
   onReorderTasks,
   onDeleteGroup,
+  onDeferTasks,
 }: QuestGroupCardProps) {
   const [taskTitle, setTaskTitle] = useState("");
   const [addingTask, setAddingTask] = useState(false);
@@ -79,8 +82,11 @@ export function QuestGroupCard({
     setDragOverId(null);
   }
 
-  const completedCount = group.tasks.filter((t) => t.completed).length;
-  const totalCount = group.tasks.length;
+  const today = localDateStr();
+  const visibleTasks = group.tasks.filter((t) => !t.deferredDate || t.deferredDate <= today);
+  const deferredCount = group.tasks.length - visibleTasks.length;
+  const completedCount = visibleTasks.filter((t) => t.completed).length;
+  const totalCount = visibleTasks.length;
   const allDone = totalCount > 0 && completedCount === totalCount;
 
   return (
@@ -98,13 +104,42 @@ export function QuestGroupCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setAddingTask((v) => !v)}
-            className="border border-cyan-400/30 bg-cyan-400/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/80 transition hover:bg-cyan-400/15 hover:text-cyan-300"
-          >
-            + ADD
-          </button>
+          {/* +ADD / Move to Tomorrow slide group */}
+          <div className="group/defer relative flex items-center">
+            <button
+              type="button"
+              onClick={() => setAddingTask((v) => !v)}
+              className="relative z-10 border border-cyan-400/30 bg-cyan-400/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/80 transition-all duration-200 hover:bg-cyan-400/15 hover:text-cyan-300 group-hover/defer:translate-x-[-2px]"
+            >
+              + ADD
+            </button>
+
+            {/* Defer arrow — slides in on group hover */}
+            <div className="group/arrow relative translate-x-1 opacity-0 transition-all duration-200 group-hover/defer:translate-x-0 group-hover/defer:opacity-100">
+              <button
+                type="button"
+                onClick={onDeferTasks}
+                className="flex items-center border border-orange-400/30 bg-orange-400/5 px-1.5 py-0.5 text-orange-400/70 transition hover:border-orange-400/50 hover:bg-orange-400/15 hover:text-orange-300"
+                aria-label="Move incomplete tasks to tomorrow"
+              >
+                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+              {/* Tooltip */}
+              <span className="pointer-events-none absolute right-0 top-full z-30 mt-1 whitespace-nowrap border border-orange-400/25 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-orange-300 opacity-0 shadow-lg transition-opacity group-hover/arrow:opacity-100">
+                Move to Tomorrow · -5 XP/task
+              </span>
+            </div>
+          </div>
+
+          {/* Deferred count badge */}
+          {deferredCount > 0 && (
+            <span className="text-[9px] font-bold tabular-nums text-orange-400/60">
+              +{deferredCount} tmr
+            </span>
+          )}
+
           <button
             type="button"
             onClick={onDeleteGroup}
@@ -142,12 +177,12 @@ export function QuestGroupCard({
 
       {/* Tasks */}
       <div className="space-y-1.5">
-        {group.tasks.length === 0 ? (
+        {visibleTasks.length === 0 ? (
           <div className="border border-dashed border-cyan-400/15 py-4 text-center text-xs text-slate-600">
-            No quests yet — press ADD above.
+            {deferredCount > 0 ? `All tasks deferred — ${deferredCount} returning tomorrow.` : "No quests yet — press ADD above."}
           </div>
         ) : (
-          group.tasks.map((task) => (
+          visibleTasks.map((task) => (
             <QuestTaskItem
               key={task.id}
               task={task}

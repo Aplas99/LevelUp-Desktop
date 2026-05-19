@@ -10,6 +10,10 @@ declare global {
       getDataFilePath: () => Promise<string>;
       minimizeWindow: () => Promise<void>;
       closeWindow: () => Promise<void>;
+      setAlwaysOnTop: (value: boolean) => Promise<void>;
+      setOpacity: (value: number) => Promise<void>;
+      setStartWithWindows: (value: boolean) => Promise<void>;
+      quitApp: () => Promise<void>;
     };
   }
 }
