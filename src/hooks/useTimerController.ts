@@ -14,6 +14,16 @@ interface UseTimerControllerOptions {
   ) => Promise<AppData | null>;
 }
 
+function playAlarm() {
+  try {
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/alarm.mp3`);
+    audio.volume = 0.7;
+    void audio.play();
+  } catch {
+    // audio unavailable — silent fail
+  }
+}
+
 function notifyTimerCompletion(previousMode: TimerMode, nextMode: TimerMode) {
   if (typeof Notification === "undefined") return;
 
@@ -90,6 +100,7 @@ export function useTimerController({
       previousTimer.remainingSeconds === 1 &&
       previousTimer.mode !== currentTimer.mode
     ) {
+      playAlarm();
       notifyTimerCompletion(previousTimer.mode, currentTimer.mode);
     }
 
