@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { AppData } from "../types/appData";
 import type { Toast } from "./ToastContainer";
-import { createQuestGroup, createQuestTask } from "../services/appDataFactory";
+import { createDefaultAppData, createQuestGroup, createQuestTask } from "../services/appDataFactory";
 import { calculateRank, checkAndUpdateStreak, getStreakMilestone, localDateStr, RANK_ORDER } from "../services/progressService";
 import { QuestGroupCard } from "./QuestGroupCard";
 
@@ -242,6 +242,12 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
     });
   }
 
+  function handleDevReset() {
+    if (!confirm("Reset ALL progress? This cannot be undone.")) return;
+    updateData(() => createDefaultAppData());
+    addToast({ type: "xp", title: "Progress Reset", body: "Starting fresh from zero." });
+  }
+
   return (
     <section className="mt-3">
       {/* Board header */}
@@ -325,30 +331,40 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
         </button>
 
         {devOpen && (
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 space-y-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDevXP}
+                className="border border-cyan-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/60 transition hover:border-cyan-400/50 hover:text-cyan-300"
+                style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
+              >
+                +50 XP
+              </button>
+              <button
+                type="button"
+                onClick={handleDevStreak}
+                className="border border-amber-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-400/60 transition hover:border-amber-400/50 hover:text-amber-300"
+                style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
+              >
+                +1 Streak
+              </button>
+              <button
+                type="button"
+                onClick={handleDevRank}
+                className="border border-violet-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-violet-400/60 transition hover:border-violet-400/50 hover:text-violet-300"
+                style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
+              >
+                Next Rank
+              </button>
+            </div>
             <button
               type="button"
-              onClick={handleDevXP}
-              className="border border-cyan-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/60 transition hover:border-cyan-400/50 hover:text-cyan-300"
+              onClick={handleDevReset}
+              className="w-full border border-red-500/30 bg-slate-900/60 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-500/60 transition hover:border-red-500/60 hover:bg-red-500/10 hover:text-red-400"
               style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
             >
-              +50 XP
-            </button>
-            <button
-              type="button"
-              onClick={handleDevStreak}
-              className="border border-amber-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-400/60 transition hover:border-amber-400/50 hover:text-amber-300"
-              style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
-            >
-              +1 Streak
-            </button>
-            <button
-              type="button"
-              onClick={handleDevRank}
-              className="border border-violet-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-violet-400/60 transition hover:border-violet-400/50 hover:text-violet-300"
-              style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
-            >
-              Next Rank
+              Reset All Progress
             </button>
           </div>
         )}

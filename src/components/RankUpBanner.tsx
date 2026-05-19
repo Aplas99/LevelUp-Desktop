@@ -10,7 +10,7 @@ const RANK_STYLE: Record<string, { border: string; text: string; glow: string; l
   C: { border: "border-green-400/60",  text: "text-green-400",  glow: "shadow-[0_0_80px_rgba(74,222,128,0.45)]",  label: "Rank Assessment Complete" },
   B: { border: "border-orange-400/60", text: "text-orange-400", glow: "shadow-[0_0_80px_rgba(251,146,60,0.45)]",  label: "Rank Assessment Complete" },
   A: { border: "border-red-400/60",    text: "text-red-400",    glow: "shadow-[0_0_80px_rgba(248,113,113,0.45)]", label: "Rank Assessment Complete" },
-  S: { border: "border-amber-400/60",  text: "text-amber-300",  glow: "shadow-[0_0_80px_rgba(251,191,36,0.55)]",  label: "!  S-Rank Achieved  !" },
+  S: { border: "border-red-500/70",    text: "text-red-500",    glow: "shadow-[0_0_100px_rgba(239,68,68,0.75)]",  label: "!  S-Rank Achieved  !" },
 };
 
 const DEFAULT_STYLE = RANK_STYLE.D;
