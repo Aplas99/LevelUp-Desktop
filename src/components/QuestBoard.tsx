@@ -243,8 +243,9 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
   }
 
   function handleDevReset() {
-    if (!confirm("Reset ALL progress? This cannot be undone.")) return;
-    updateData(() => createDefaultAppData());
+    if (!confirm("Reset progress? XP, level, rank, and streak will be zeroed. Quest groups are kept.")) return;
+    const defaults = createDefaultAppData();
+    updateData((cur) => ({ ...cur, user: { ...defaults.user, name: cur.user.name, avatarUrl: cur.user.avatarUrl } }));
     addToast({ type: "xp", title: "Progress Reset", body: "Starting fresh from zero." });
   }
 
