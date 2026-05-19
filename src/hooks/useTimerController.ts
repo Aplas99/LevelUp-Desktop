@@ -14,9 +14,12 @@ interface UseTimerControllerOptions {
   ) => Promise<AppData | null>;
 }
 
-function playAlarm() {
+function playAlarm(completedMode: TimerMode) {
+  const file = completedMode === "shortBreak" || completedMode === "longBreak"
+    ? "break_alarm.mp3"
+    : "task_alarm.mp3";
   try {
-    const audio = new Audio(`${import.meta.env.BASE_URL}audio/alarm.mp3`);
+    const audio = new Audio(`${import.meta.env.BASE_URL}audio/${file}`);
     audio.volume = 0.7;
     void audio.play();
   } catch {
@@ -100,7 +103,7 @@ export function useTimerController({
       previousTimer.remainingSeconds === 1 &&
       previousTimer.mode !== currentTimer.mode
     ) {
-      playAlarm();
+      playAlarm(previousTimer.mode);
       notifyTimerCompletion(previousTimer.mode, currentTimer.mode);
     }
 
