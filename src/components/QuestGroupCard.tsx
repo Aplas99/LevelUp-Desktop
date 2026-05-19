@@ -7,76 +7,145 @@ interface QuestGroupCardProps {
   onAddTask: (title: string) => void;
   onToggleTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask: (taskId: string, newTitle: string) => void;
+  onReorderTasks: (newIds: string[]) => void;
   onDeleteGroup: () => void;
 }
+
+const INPUT_CLIP =
+  "polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))";
 
 export function QuestGroupCard({
   group,
   onAddTask,
   onToggleTask,
   onDeleteTask,
+  onEditTask,
+  onReorderTasks,
   onDeleteGroup,
 }: QuestGroupCardProps) {
   const [taskTitle, setTaskTitle] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const trimmedTitle = taskTitle.trim();
-
-    if (!trimmedTitle) return;
-
-    onAddTask(trimmedTitle);
+    const trimmed = taskTitle.trim();
+    if (!trimmed) return;
+    onAddTask(trimmed);
     setTaskTitle("");
+    setAddingTask(false);
   }
 
-  const completedCount = group.tasks.filter((task) => task.completed).length;
+  function makeDragStart(taskId: string) {
+    return (e: React.DragEvent) => {
+      setDraggedId(taskId);
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", taskId);
+    };
+  }
+
+  function makeDragOver(taskId: string) {
+    return (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (taskId !== draggedId) setDragOverId(taskId);
+    };
+  }
+
+  function makeDrop(taskId: string) {
+    return (e: React.DragEvent) => {
+      e.preventDefault();
+      if (!draggedId || draggedId === taskId) {
+        setDraggedId(null);
+        setDragOverId(null);
+        return;
+      }
+      const ids = group.tasks.map((t) => t.id);
+      const from = ids.indexOf(draggedId);
+      const to = ids.indexOf(taskId);
+      const next = [...ids];
+      next.splice(from, 1);
+      next.splice(to, 0, draggedId);
+      onReorderTasks(next);
+      setDraggedId(null);
+      setDragOverId(null);
+    };
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
+  const completedCount = group.tasks.filter((t) => t.completed).length;
   const totalCount = group.tasks.length;
+  const allDone = totalCount > 0 && completedCount === totalCount;
 
   return (
-    <section className="rounded-xl border border-blue-400/40 bg-slate-950/70 p-3 shadow-[0_0_20px_rgba(59,130,246,0.14)]">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-cyan-300">
-            Quest Group
-          </p>
-
-          <h2 className="mt-1 text-lg font-bold text-white">{group.title}</h2>
-
-          <p className="mt-1 text-sm text-slate-400">
-            {completedCount}/{totalCount} quests completed
-          </p>
+    <section>
+      {/* Group header */}
+      <div className="mb-2 flex items-center justify-between px-0.5">
+        <div className="flex items-center gap-2">
+          <div className="h-3.5 w-0.5 bg-cyan-400/70" />
+          <h2 className="text-[11px] font-extrabold uppercase tracking-[0.35em] text-cyan-300">
+            {group.title}
+          </h2>
+          <span className={`text-[9px] font-bold tabular-nums ${allDone ? "text-cyan-400" : "text-slate-500"}`}>
+            {completedCount}/{totalCount}
+          </span>
         </div>
 
-        <button
-          onClick={onDeleteGroup}
-          className="rounded border border-red-400/40 px-3 py-1 text-sm text-red-300 transition hover:bg-red-400/10"
-        >
-          Delete
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAddingTask((v) => !v)}
+            className="border border-cyan-400/30 bg-cyan-400/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/80 transition hover:bg-cyan-400/15 hover:text-cyan-300"
+          >
+            + ADD
+          </button>
+          <button
+            type="button"
+            onClick={onDeleteGroup}
+            aria-label="Delete group"
+            className="text-slate-700 transition hover:text-red-400"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="m6 6 12 12" />
+              <path d="m18 6-12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mb-3 flex gap-2">
-        <input
-          value={taskTitle}
-          onChange={(event) => setTaskTitle(event.target.value)}
-          placeholder="Add a new quest..."
-          className="flex-1 rounded-lg border border-cyan-400/40 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300"
-        />
+      {/* Add task form */}
+      {addingTask && (
+        <form onSubmit={handleSubmit} className="mb-2 flex gap-2">
+          <input
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            placeholder="Quest name..."
+            autoFocus
+            className="flex-1 border border-cyan-400/30 bg-slate-900/90 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/60"
+            style={{ clipPath: INPUT_CLIP }}
+          />
+          <button
+            type="submit"
+            className="border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-cyan-300 transition hover:bg-cyan-400/20"
+            style={{ clipPath: INPUT_CLIP }}
+          >
+            Add
+          </button>
+        </form>
+      )}
 
-        <button
-          type="submit"
-          className="rounded-lg border border-cyan-300 bg-cyan-400/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-cyan-200 transition hover:bg-cyan-400/20"
-        >
-          Add
-        </button>
-      </form>
-
-      <div className="space-y-3">
+      {/* Tasks */}
+      <div className="space-y-1.5">
         {group.tasks.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-cyan-400/30 p-4 text-sm text-slate-400">
-            No quests yet. Add your first task.
-          </p>
+          <div className="border border-dashed border-cyan-400/15 py-4 text-center text-xs text-slate-600">
+            No quests yet — press ADD above.
+          </div>
         ) : (
           group.tasks.map((task) => (
             <QuestTaskItem
@@ -84,6 +153,12 @@ export function QuestGroupCard({
               task={task}
               onToggleComplete={() => onToggleTask(task.id)}
               onDelete={() => onDeleteTask(task.id)}
+              onEdit={(newTitle) => onEditTask(task.id, newTitle)}
+              isDragOver={dragOverId === task.id}
+              onDragStart={makeDragStart(task.id)}
+              onDragOver={makeDragOver(task.id)}
+              onDrop={makeDrop(task.id)}
+              onDragEnd={handleDragEnd}
             />
           ))
         )}

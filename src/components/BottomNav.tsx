@@ -1,17 +1,15 @@
-export type AppTab = "home" | "focus" | "stats";
+export type AppTab = "home" | "focus" | "stats" | "profile";
 
 interface BottomNavProps {
   activeTab: AppTab;
   onChange: (tab: AppTab) => void;
 }
 
-const tabs: {
-  id: AppTab;
-  label: string;
-}[] = [
-  { id: "home", label: "Home" },
-  { id: "focus", label: "Focus" },
-  { id: "stats", label: "Stats" },
+const tabs: { id: AppTab; label: string }[] = [
+  { id: "home",    label: "Home"    },
+  { id: "focus",   label: "Focus"   },
+  { id: "stats",   label: "Stats"   },
+  { id: "profile", label: "Profile" },
 ];
 
 function TabIcon({ tab }: { tab: AppTab }) {
@@ -24,7 +22,6 @@ function TabIcon({ tab }: { tab: AppTab }) {
       </svg>
     );
   }
-
   if (tab === "focus") {
     return (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -34,40 +31,49 @@ function TabIcon({ tab }: { tab: AppTab }) {
       </svg>
     );
   }
-
+  if (tab === "stats") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19V9" />
+        <path d="M10 19V5" />
+        <path d="M16 19v-7" />
+        <path d="M22 19v-4" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 19V9" />
-      <path d="M10 19V5" />
-      <path d="M16 19v-7" />
-      <path d="M22 19v-4" />
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
   );
 }
 
 export function BottomNav({ activeTab, onChange }: BottomNavProps) {
   return (
-    <nav className="grid grid-cols-3 gap-2 border-t border-cyan-400/20 bg-slate-950/85 px-2 py-3 backdrop-blur-xl">
+    <nav className="no-drag grid grid-cols-4 border-t border-cyan-400/15 bg-slate-950 px-1 py-2">
       {tabs.map((tab) => {
         const isActive = tab.id === activeTab;
-
         return (
           <button
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className={`rounded-xl border px-3 py-2 text-center transition ${
+            className={`rounded-lg px-2 py-2 text-center transition ${
               isActive
-                ? "border-cyan-300/70 bg-cyan-400/12 text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.16)]"
-                : "border-transparent bg-slate-900/40 text-slate-400 hover:border-cyan-400/20 hover:text-slate-200"
+                ? "text-cyan-200"
+                : "text-slate-600 hover:text-slate-300"
             }`}
           >
             <div className="flex items-center justify-center">
               <TabIcon tab={tab.id} />
             </div>
-            <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.25em]">
+            <div className={`mt-1 text-[10px] font-bold uppercase tracking-[0.2em] ${isActive ? "text-cyan-400" : ""}`}>
               {tab.label}
             </div>
+            {isActive && (
+              <div className="mx-auto mt-1 h-0.5 w-4 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+            )}
           </button>
         );
       })}

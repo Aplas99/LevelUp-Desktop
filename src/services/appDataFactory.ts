@@ -3,6 +3,8 @@ import type { AppData, QuestGroup, QuestTask } from "../types/appData";
 export function createDefaultAppData(): AppData {
   return {
     user: {
+      name: "Hunter",
+      rank: "E",
       level: 1,
       xp: 0,
       xpToNextLevel: 100,

@@ -1,10 +1,13 @@
 export type TimerMode = "focus" | "shortBreak" | "longBreak";
 
 export interface LevelUpUser {
+  name: string;
+  rank: string;
   level: number;
   xp: number;
   xpToNextLevel: number;
   streak: number;
+  avatarUrl?: string;
 }
 
 export interface LevelUpSettings {

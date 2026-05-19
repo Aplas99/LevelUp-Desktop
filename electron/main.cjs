@@ -26,6 +26,8 @@ function getDataFilePath() {
 function getDefaultData() {
   return {
     user: {
+      name: "Hunter",
+      rank: "E",
       level: 1,
       xp: 0,
       xpToNextLevel: 100,
