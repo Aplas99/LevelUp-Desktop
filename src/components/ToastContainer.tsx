@@ -101,7 +101,7 @@ interface ToastContainerProps {
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   if (toasts.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed bottom-20 right-3 z-40 flex w-60 flex-col gap-2">
+    <div className="pointer-events-none fixed left-1/2 top-3 z-40 flex w-64 -translate-x-1/2 flex-col gap-2">
       {toasts.map((t) => (
         <div key={t.id} className="pointer-events-auto">
           <ToastItem toast={t} onDismiss={onDismiss} />

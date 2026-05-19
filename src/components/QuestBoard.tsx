@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { AppData } from "../types/appData";
 import type { Toast } from "./ToastContainer";
 import { createQuestGroup, createQuestTask } from "../services/appDataFactory";
-import { calculateRank, checkAndUpdateStreak, getStreakMilestone, localDateStr } from "../services/progressService";
+import { calculateRank, checkAndUpdateStreak, getStreakMilestone, localDateStr, RANK_ORDER } from "../services/progressService";
 import { QuestGroupCard } from "./QuestGroupCard";
 
 interface QuestBoardProps {
@@ -17,6 +17,7 @@ const INPUT_CLIP =
 export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
   const [groupTitle, setGroupTitle] = useState("");
   const [addingGroup, setAddingGroup] = useState(false);
+  const [devOpen, setDevOpen] = useState(false);
 
   function handleCreateGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -206,8 +207,43 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
     });
   }
 
+  function handleDevXP() {
+    updateData((cur) => {
+      const gain = 50;
+      let xp = cur.user.xp + gain;
+      let level = cur.user.level;
+      let xpToNextLevel = cur.user.xpToNextLevel;
+      while (xp >= xpToNextLevel) {
+        xp -= xpToNextLevel;
+        level += 1;
+        xpToNextLevel = Math.round(xpToNextLevel * 1.25);
+      }
+      addToast({ type: "xp", title: "Dev: +50 XP", body: `XP → ${xp}/${xpToNextLevel}` });
+      return { ...cur, user: { ...cur.user, xp, level, xpToNextLevel } };
+    });
+  }
+
+  function handleDevStreak() {
+    updateData((cur) => {
+      const streak = cur.user.streak + 1;
+      const newRank = calculateRank(cur.user.level, streak);
+      addToast({ type: "streak", title: "Dev: Streak +1", body: `Streak → Day ${streak}` });
+      return { ...cur, user: { ...cur.user, streak, rank: newRank } };
+    });
+  }
+
+  function handleDevRank() {
+    updateData((cur) => {
+      const idx = RANK_ORDER.indexOf(cur.user.rank as (typeof RANK_ORDER)[number]);
+      const nextRank = RANK_ORDER[Math.min(idx + 1, RANK_ORDER.length - 1)];
+      if (nextRank === cur.user.rank) return cur;
+      addToast({ type: "levelup", title: "Dev: Force Rank Up", body: `Rank → ${nextRank}` });
+      return { ...cur, user: { ...cur.user, rank: nextRank } };
+    });
+  }
+
   return (
-    <section className="mt-5">
+    <section className="mt-3">
       {/* Board header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -272,6 +308,49 @@ export function QuestBoard({ data, updateData, addToast }: QuestBoardProps) {
               onDeferTasks={() => handleDeferGroupTasks(group.id)}
             />
           ))
+        )}
+      </div>
+
+      {/* Dev test panel */}
+      <div className="mt-6 border-t border-slate-800/60 pt-3">
+        <button
+          type="button"
+          onClick={() => setDevOpen((v) => !v)}
+          className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.35em] text-slate-700 transition hover:text-slate-500"
+        >
+          <svg viewBox="0 0 24 24" className={`h-2.5 w-2.5 transition-transform ${devOpen ? "rotate-90" : ""}`} fill="currentColor">
+            <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+          </svg>
+          Dev Tools
+        </button>
+
+        {devOpen && (
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={handleDevXP}
+              className="border border-cyan-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/60 transition hover:border-cyan-400/50 hover:text-cyan-300"
+              style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
+            >
+              +50 XP
+            </button>
+            <button
+              type="button"
+              onClick={handleDevStreak}
+              className="border border-amber-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-400/60 transition hover:border-amber-400/50 hover:text-amber-300"
+              style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
+            >
+              +1 Streak
+            </button>
+            <button
+              type="button"
+              onClick={handleDevRank}
+              className="border border-violet-400/25 bg-slate-900/60 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-violet-400/60 transition hover:border-violet-400/50 hover:text-violet-300"
+              style={{ clipPath: "polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px))" }}
+            >
+              Next Rank
+            </button>
+          </div>
         )}
       </div>
     </section>

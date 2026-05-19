@@ -124,12 +124,16 @@ function App() {
           onToggleAlwaysOnTop={toggleAlwaysOnTop}
         />
 
-        <div className="no-drag hud-scroll flex-1 overflow-y-auto p-4 pb-5">
+        {/* Status panel lives outside the scroll area so it acts as a drag region */}
+        {activeTab === "home" && (
+          <div className="px-4 pt-4">
+            <PlayerStatusPanel user={data.user} />
+          </div>
+        )}
+
+        <div className="no-drag hud-scroll flex-1 overflow-y-auto px-4 pb-5 pt-2">
           {activeTab === "home" && (
-            <>
-              <PlayerStatusPanel user={data.user} />
-              <QuestBoard data={data} updateData={updateData} addToast={addToast} />
-            </>
+            <QuestBoard data={data} updateData={updateData} addToast={addToast} />
           )}
 
           {activeTab === "focus" && timerController.timer && timerController.settings && (
