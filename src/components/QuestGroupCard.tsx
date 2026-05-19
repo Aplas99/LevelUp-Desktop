@@ -124,12 +124,10 @@ export function QuestGroupCard({
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </button>
-            {/* Tooltip */}
             <span className="pointer-events-none absolute right-0 top-full z-30 mt-1 whitespace-nowrap border border-orange-400/25 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-orange-300 opacity-0 shadow-lg transition-opacity group-hover/arrow:opacity-100">
               Move to Tomorrow · -5 XP/task
             </span>
           </div>
-        </div>
 
           {/* Deferred count badge */}
           {deferredCount > 0 && (
