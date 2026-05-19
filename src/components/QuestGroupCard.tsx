@@ -103,35 +103,33 @@ export function QuestGroupCard({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* +ADD / Move to Tomorrow slide group */}
-          <div className="group/defer relative flex items-center">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setAddingTask((v) => !v)}
+            className="border border-cyan-400/30 bg-cyan-400/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/80 transition hover:bg-cyan-400/15 hover:text-cyan-300"
+          >
+            + ADD
+          </button>
+
+          {/* Defer arrow — always visible, dimmed until hovered */}
+          <div className="group/arrow relative">
             <button
               type="button"
-              onClick={() => setAddingTask((v) => !v)}
-              className="relative z-10 border border-cyan-400/30 bg-cyan-400/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-400/80 transition-all duration-200 hover:bg-cyan-400/15 hover:text-cyan-300 group-hover/defer:translate-x-[-2px]"
+              onClick={onDeferTasks}
+              className="flex items-center border border-orange-400/15 bg-transparent px-1.5 py-0.5 text-orange-400/30 transition hover:border-orange-400/50 hover:bg-orange-400/10 hover:text-orange-300"
+              aria-label="Move incomplete tasks to tomorrow"
             >
-              + ADD
+              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
             </button>
-
-            {/* Defer arrow — slides in on group hover */}
-            <div className="group/arrow relative translate-x-1 opacity-0 transition-all duration-200 group-hover/defer:translate-x-0 group-hover/defer:opacity-100">
-              <button
-                type="button"
-                onClick={onDeferTasks}
-                className="flex items-center border border-orange-400/30 bg-orange-400/5 px-1.5 py-0.5 text-orange-400/70 transition hover:border-orange-400/50 hover:bg-orange-400/15 hover:text-orange-300"
-                aria-label="Move incomplete tasks to tomorrow"
-              >
-                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </button>
-              {/* Tooltip */}
-              <span className="pointer-events-none absolute right-0 top-full z-30 mt-1 whitespace-nowrap border border-orange-400/25 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-orange-300 opacity-0 shadow-lg transition-opacity group-hover/arrow:opacity-100">
-                Move to Tomorrow · -5 XP/task
-              </span>
-            </div>
+            {/* Tooltip */}
+            <span className="pointer-events-none absolute right-0 top-full z-30 mt-1 whitespace-nowrap border border-orange-400/25 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-orange-300 opacity-0 shadow-lg transition-opacity group-hover/arrow:opacity-100">
+              Move to Tomorrow · -5 XP/task
+            </span>
           </div>
+        </div>
 
           {/* Deferred count badge */}
           {deferredCount > 0 && (
